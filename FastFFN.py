@@ -18,7 +18,6 @@ class FastFFN(nn.Module):
 
   use_bias : bool = True
 
-
   dtype : jax.typing.DTypeLike = jnp.float32
 
   node_init : Callable = init.normal
@@ -28,60 +27,48 @@ class FastFFN(nn.Module):
     self.num_leaves = 2**self.depth
     self.num_nodes = self.num_leaves - 1
 
+
   @nn.compact
   def __call__(self, inputs, training, *args, **kwargs):
     B, T, D = inputs.shape
 
-    
+
+    ## layer logic ##
+
     mixture = jnp.ones((B, T, self.num_leaves))
+
+    node_dense = nn.DenseGeneral((self.num_nodes,1), use_bias=self.use_bias, kernel_init=self.node_init(1/jnp.sqrt(D)), param_dtype=self.dtype)
+
+    c = vmap(vmap(lambda u : nn.sigmoid(node_dense(u))))(inputs)
+    
+    """
+    if training:
+      c = c - jax.lax.stop_gradient(c) + jax.lax.stop_gradient(jnp.rint(c))
+    else:
+      c = jnp.rint(c)
+      """
+
+    nc = 1-c
+
+    c_nc = jnp.stack([c, nc], -1)
+    c_nc = jnp.reshape(c_nc, (B, T, -1))
+    c_nc = jnp.expand_dims(c_nc, -1)
 
     for curr_depth in range(self.depth):
       n_nodes = 2**curr_depth
 
-      wnode = self.param(f"weight_node_{curr_depth}", self.leaf_init(1/jnp.sqrt(D)), (D, n_nodes), self.dtype)
-      bnode = self.param(f"bias_node_{curr_depth}", init.zeros_init(), (n_nodes,), self.dtype)
-
-      c = vmap(vmap(lambda u : nn.sigmoid(u @ wnode + bnode)))(inputs)
-      if training:
-        c = c - jax.lax.stop_gradient(c) + jax.lax.stop_gradient(jnp.rint(c))
-      else:
-        c = jnp.rint(c)
-
-      nc = 1-c
-
-      c_nc = jnp.stack([c, nc], -1)
-      c_nc = jnp.reshape(c_nc, (B, T, -1))
-      c_nc = jnp.expand_dims(c_nc, -1)
-
       mixture = mixture.reshape((B, T, n_nodes*2, self.num_leaves // (2*n_nodes)))
-      mixture = mixture * c_nc
+      mixture = mixture * c_nc[...,:n_nodes*2,:]
 
     mixture = mixture.reshape((B, T, self.num_leaves))
 
-    w_leaves_1_a = [self.param(f"weight_leaf_1a_{i}", self.leaf_init(1/jnp.sqrt(D)), (D, self.leaf_dim), self.dtype) for i in range(self.num_leaves)]
-    b_leaves_1_a = [self.param(f"bias_leaf_1a_{i}", init.zeros_init(), (self.leaf_dim,), self.dtype) for i in range(self.num_leaves)]
-    w_leaves_1_b = [self.param(f"weight_leaf_1b_{i}", self.leaf_init(1/jnp.sqrt(D)), (D, self.leaf_dim), self.dtype) for i in range(self.num_leaves)]
-    b_leaves_1_b = [self.param(f"bias_leaf_1b_{i}", init.zeros_init(), (self.leaf_dim,), self.dtype) for i in range(self.num_leaves)]
+    l1a = nn.DenseGeneral((self.num_leaves, self.leaf_dim), kernel_init=self.leaf_init(1/jnp.sqrt(D)), use_bias=self.use_bias, param_dtype=self.dtype) 
+    l1b = nn.DenseGeneral((self.num_leaves, self.leaf_dim), use_bias=self.use_bias, param_dtype=self.dtype) 
+    l2 = nn.DenseGeneral((self.num_leaves, self.dim), axis=(-1,-2), use_bias=self.use_bias, param_dtype=self.dtype) 
 
-    w_leaves_2 = [self.param(f"weight_leaf_2_{i}", self.leaf_init(1/jnp.sqrt(self.leaf_dim)), (self.leaf_dim, D), self.dtype) for i in range(self.num_leaves)]
-    b_leaves_2 = [self.param(f"bias_leaf_2_{i}", init.zeros_init(), (D,), self.dtype) for i in range(self.num_leaves)]
-
-    w1a = jnp.stack(w_leaves_1_a, 0)
-    b1a = jnp.stack(b_leaves_1_a, 0)
-
-    w1b = jnp.stack(w_leaves_1_b, 0)
-    b1b = jnp.stack(b_leaves_1_b, 0)
-
-    leaf_f_1 = vmap(lambda u,wa,wb,ba,bb : (u @ wa + ba) * (u @ wb + bb), (None, 0, 0, 0, 0))
-    y1 = vmap(vmap(lambda u : leaf_f_1(u, w1a, w1b, b1a, b1b)))(inputs)
-
-    w2 = jnp.stack(w_leaves_2, 0)
-    b2 = jnp.stack(b_leaves_2, 0)
-
-    leaf_f_2 = vmap(lambda u,w,b : u @ w + b, (-2, 0, 0))
-    y2 = vmap(vmap(lambda u : leaf_f_2(u, w2, b2)))(y1)
-
-    y = y2 * jnp.expand_dims(mixture, -1)
+    y = vmap(vmap(lambda u : l2(l1a(u)*l1b(u))))(inputs)
+    
+    y = y * jnp.expand_dims(mixture, -1)
     y = y.sum(-2)
     y = y.reshape((B, T, -1))
 
