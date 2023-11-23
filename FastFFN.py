@@ -40,7 +40,7 @@ class FastFFN(nn.Module):
     node_dense = nn.DenseGeneral((self.num_nodes,1), use_bias=self.use_bias, kernel_init=self.node_init(1/jnp.sqrt(D)), param_dtype=self.dtype)
 
     c = vmap(vmap(lambda u : nn.sigmoid(node_dense(u))))(inputs)
-    
+
     """
     if training:
       c = c - jax.lax.stop_gradient(c) + jax.lax.stop_gradient(jnp.rint(c))
@@ -63,8 +63,8 @@ class FastFFN(nn.Module):
     mixture = mixture.reshape((B, T, self.num_leaves))
 
     l1a = nn.DenseGeneral((self.num_leaves, self.leaf_dim), kernel_init=self.leaf_init(1/jnp.sqrt(D)), use_bias=self.use_bias, param_dtype=self.dtype) 
-    l1b = nn.DenseGeneral((self.num_leaves, self.leaf_dim), use_bias=self.use_bias, param_dtype=self.dtype) 
-    l2 = nn.DenseGeneral((self.num_leaves, self.dim), axis=(-1,-2), use_bias=self.use_bias, param_dtype=self.dtype) 
+    l1b = nn.DenseGeneral((self.num_leaves, self.leaf_dim), kernel_init=self.leaf_init(1/jnp.sqrt(D)), use_bias=self.use_bias, param_dtype=self.dtype) 
+    l2 = nn.DenseGeneral((self.num_leaves, self.dim), axis=(-1,-2), kernel_init=self.leaf_init(1/jnp.sqrt(self.leaf_dim)), use_bias=self.use_bias, param_dtype=self.dtype) 
 
     y = vmap(vmap(lambda u : l2(l1a(u)*l1b(u))))(inputs)
     
