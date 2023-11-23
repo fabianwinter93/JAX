@@ -1,3 +1,7 @@
+"""
+Fast Feedforward Networks: https://arxiv.org/pdf/2308.14711.pdf
+Exponentially Faster Language Modeling: https://arxiv.org/pdf/2311.10770.pdf
+"""
 import jax
 from jax import numpy as jnp
 from flax import linen as nn

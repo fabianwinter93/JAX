@@ -1,3 +1,8 @@
+"""
+The Languini Kitchen: Enabling Language Modelling
+Research at Different Scales of Compute: https://arxiv.org/pdf/2309.11197.pdf
+"""
+
 import numpy as np
 import jax
 from jax import random

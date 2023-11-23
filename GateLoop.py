@@ -1,3 +1,8 @@
+"""
+GATELOOP: FULLY DATA-CONTROLLED LINEAR RE-
+CURRENCE FOR SEQUENCE MODELING: https://arxiv.org/pdf/2311.01927.pdf
+"""
+
 import numpy as np
 import jax
 from jax import random

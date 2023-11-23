@@ -1,3 +1,7 @@
+"""
+Resurrecting Recurrent Neural Networks for Long Sequences: https://arxiv.org/pdf/2303.06349.pdf
+"""
+
 import numpy as np
 import jax
 from jax import random
