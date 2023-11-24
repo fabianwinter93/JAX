@@ -1,4 +1,4 @@
-Implementations of papers i find interesting.
+Implementations of papers / algorithms / ideas I find interesting.
 
 # JAX
 
