@@ -2,11 +2,9 @@
 Resurrecting Recurrent Neural Networks for Long Sequences: https://arxiv.org/pdf/2303.06349.pdf
 """
 
-import numpy as np
 import jax
 from jax import random
 from jax import numpy as jnp
-import flax
 from flax import linen as nn
 from flax.linen import initializers as init
 from typing import (
@@ -28,7 +26,7 @@ def binary_op(ei, ej):
   return decay_prop, new_state
 
 
-class LRU(nn.Module):
+class LinearRecurrentUnit(nn.Module):
   dim : int
 
   r_min : float = 0. 

@@ -3,11 +3,9 @@ GATELOOP: FULLY DATA-CONTROLLED LINEAR RE-
 CURRENCE FOR SEQUENCE MODELING: https://arxiv.org/pdf/2311.01927.pdf
 """
 
-import numpy as np
 import jax
 from jax import random
 from jax import numpy as jnp
-import flax
 from flax import linen as nn
 from flax.linen import initializers as init
 from typing import (

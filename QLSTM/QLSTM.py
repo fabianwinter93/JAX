@@ -3,11 +3,8 @@ The Languini Kitchen: Enabling Language Modelling
 Research at Different Scales of Compute: https://arxiv.org/pdf/2309.11197.pdf
 """
 
-import numpy as np
 import jax
-from jax import random
 from jax import numpy as jnp
-import flax
 from flax import linen as nn
 from flax.linen import initializers as init
 from typing import (

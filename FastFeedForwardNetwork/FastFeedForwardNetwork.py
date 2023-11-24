@@ -11,8 +11,7 @@ from typing import (
 )
 vmap = jax.vmap
 
-class FastFFN(nn.Module):
-  dim : int
+class FastFeedForwardNetwork(nn.Module):
   leaf_dim : int
   depth : int
 
@@ -103,3 +102,10 @@ class FastFFN(nn.Module):
     y = y.reshape((B, T, -1))
 
     return y
+
+
+
+
+
+
+
