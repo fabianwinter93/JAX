@@ -2,6 +2,7 @@
 Fast Feedforward Networks: https://arxiv.org/pdf/2308.14711.pdf
 Exponentially Faster Language Modeling: https://arxiv.org/pdf/2311.10770.pdf
 """
+from functools import partial
 import jax
 from jax import numpy as jnp
 from jax import random
@@ -79,7 +80,7 @@ class FastFeedForwardNetwork(nn.Module):
 
     ## layer logic ##
     
-    if self.is_initialitzing() or training:
+    if training:
       def fwd(l, m, n):
         if m == self.depth:
           mlp = FFFNMLP(self.leaf_dim, self.use_bias, activation=self.activation, dtype=self.dtype)
@@ -103,7 +104,7 @@ class FastFeedForwardNetwork(nn.Module):
           node = nn.Dense(1, kernel_init=self.param_init(D), bias_init=self.param_init(D), use_bias=self.use_bias, param_dtype=self.dtype)
           c = nn.sigmoid(node(l))
           return c * fwd(l, m+1, 2*n) + (1-c) * fwd(l, m+1, 2*n + 1)
-
+      y = vmap(vmap(lambda u : fwd(u, 0, 0)))(inputs)
 
     return y
 
