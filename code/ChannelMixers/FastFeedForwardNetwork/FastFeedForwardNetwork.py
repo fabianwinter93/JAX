@@ -18,6 +18,14 @@ class FFFNMLP(nn.Module):
   activation : Callable
   dtype : jax.typing.DTypeLike
 
+
+  def param_init(self, scale):
+    def f(key, shape, dtype):
+      _scale = 1 / jnp.sqrt(scale)
+      val = random.uniform(key, shape=shape, minval=-_scale, maxval=_scale)
+      return val.astype(dtype)
+    return f
+
   @nn.compact
   def __call__(self, inputs, training, *args, **kwargs):
     D = inputs.shape[0]
@@ -53,6 +61,7 @@ class FastFeedForwardNetwork(nn.Module):
 
   dtype : jax.typing.DTypeLike = jnp.float32
 
+
   def param_init(self, scale):
     def f(key, shape, dtype):
       _scale = 1 / jnp.sqrt(scale)
@@ -69,7 +78,7 @@ class FastFeedForwardNetwork(nn.Module):
     B, T, D = inputs.shape
 
     ## layer logic ##
-
+    """
     mixture = jnp.ones((B, T, self.num_leaves))
 
     node_kernel = self.param("node_kernel", self.param_init(D), (D, self.num_nodes), self.dtype)
@@ -82,12 +91,12 @@ class FastFeedForwardNetwork(nn.Module):
       
     c = vmap(vmap(node_fn))(inputs)
 
-    """
+  
     if training:
       c = c - jax.lax.stop_gradient(c) + jax.lax.stop_gradient(jnp.rint(c))
     else:
       c = jnp.rint(c)
-      """
+    
       
 
     nc = 1-c
@@ -104,7 +113,7 @@ class FastFeedForwardNetwork(nn.Module):
 
     mixture = mixture.reshape((B, T, self.num_leaves))
 
-    """
+    
       w_leaves_1_a = [self.param(f"weight_leaf_1a_{i}", self.param_init(D), (D, self.leaf_dim), self.dtype) for i in range(self.num_leaves)]
       w_leaves_2 = [self.param(f"weight_leaf_2_{i}", self.param_init(self.leaf_dim), (self.leaf_dim, D), self.dtype) for i in range(self.num_leaves)]
       
@@ -133,15 +142,26 @@ class FastFeedForwardNetwork(nn.Module):
         
       y = vmap(vmap(leaf_f_1))(inputs)
       y = vmap(vmap(leaf_f_2))(y)
-    """
     
-    leaves = [FFFNMLP(self.leaf_dim, self.use_bias, activation=self.activation, dtype=self.dtype)]
-
-    y = jax.lax.map(lambda l : l(inputs), leaves)#(inputs)
 
     y = y * jnp.expand_dims(mixture, -1)
     y = y.sum(-2)
     y = y.reshape((B, T, -1))
+    """
+
+    #leaves = [FFFNMLP(self.leaf_dim, self.use_bias, activation=self.activation, dtype=self.dtype) for _ in range(self.num_leaves)]
+    
+    def fwd(l, m, n):
+      if m == self.depth:
+        mlp = FFFNMLP(self.leaf_dim, self.use_bias, activation=self.activation, dtype=self.dtype)
+        y = mlp(l, training=training)
+        return y
+      else:
+        node = nn.Dense(1, kernel_init=self.param_init(D), bias_init=self.param_init(D), use_bias=self.use_bias, param_dtype=self.dtype)
+        c = nn.sigmoid(node(l))
+        return c * fwd(l, m+1, 2*n) + (1-c) * fwd(l, m+1, 2*n + 1)
+
+    y = vmap(vmap(lambda u : fwd(u, 0, 0)))(inputs)
 
     return y
 
