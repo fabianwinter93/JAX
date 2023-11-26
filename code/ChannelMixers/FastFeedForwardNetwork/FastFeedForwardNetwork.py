@@ -78,6 +78,8 @@ class FastFeedForwardNetwork(nn.Module):
   def __call__(self, inputs, training, *args, **kwargs):
     B, T, D = inputs.shape
 
+    
+
     ## layer logic ##
     
     if training:
@@ -104,6 +106,9 @@ class FastFeedForwardNetwork(nn.Module):
           node = nn.Dense(1, kernel_init=self.param_init(D), bias_init=self.param_init(D), use_bias=self.use_bias, param_dtype=self.dtype)
           c = nn.sigmoid(node(l))
           return c * fwd(l, m+1, 2*n) + (1-c) * fwd(l, m+1, 2*n + 1)
+
+          
+      
       y = vmap(vmap(lambda u : fwd(u, 0, 0)))(inputs)
 
     return y
