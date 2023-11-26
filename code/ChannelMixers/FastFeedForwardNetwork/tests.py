@@ -7,6 +7,7 @@ if __name__ == "__main__":
   B = 32
   T = 128
   Din = 256
+  Dout = 256
   Dleaf = 128
   depth = 4
 
@@ -23,7 +24,7 @@ if __name__ == "__main__":
   for dt in dtypes:
     for jit_op in jit_options:
       for bias_op in bias_options:
-        fffn = FastFeedForwardNetwork(leaf_dim=Dleaf, depth=depth, dtype=dt, use_bias=bias_op)
+        fffn = FastFeedForwardNetwork(output_dim=Dout, leaf_dim=Dleaf, depth=depth, dtype=dt, use_bias=bias_op)
 
         params = fffn.init(param_key, x, False)
 
